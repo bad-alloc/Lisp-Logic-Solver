@@ -8,19 +8,13 @@
 ;; T breaks our columns).
 (defvar f nil)
 
-;; Main function: Enter any logic statement with variables and any of
-;; the junctors and, or, not, implies as a valid lisp statement. For
-;; example: (find-solution '(or (and a (not b)) (and b c)))
-(defun find-solution (logic-statement)
-  (let* ((variables (get-variables-from-statement logic-statement))
-	 (combinations (filled-truthlist-upto-number (1- (expt 2 (length variables)))))
-	 (replacement-lists (associate-variables-with-combinations combinations variables)))
-    (loop for replacement in replacement-lists do
-	 (if (eql t (eval
-		     (subst-symbols-by-list logic-statement
-					    (append replacement logic-symbol-replacement))))
-	     (print-solution replacement)))))
-    
+;; Graham's flatten: Takes a tree and flattens it into a list. E.g.:
+;; (flatten '(a (b (c d) e))) evaluates to (A B C D E)
+(defun flatten (structure)
+  (cond ((null structure) nil)
+        ((atom structure) (list structure))
+        (t (mapcan #'flatten structure))))
+
 ;; Pretty printer for our solutions.
 (defun print-solution (variables)
   ; Our solutions come in as ((A . F) (B . T)). First we make a list
@@ -61,13 +55,13 @@
       when (not (eqs or logic-symbol 'and 'or 'not 'implies))
       collect logic-symbol)))
 
-;; takes a number and returns a list of list of ts and fs, e.g.:
-;; ((t t t) (t t f) (t f t) ...). This list represents all possible
-;; combinations of truth values.
-(defun filled-truthlist-upto-number (number)
-  (subst-symbols-by-list 
-   (filled-bitlists-upto-number number)
-   '((1 . t) (0 . f))))
+;; Transform a number into a list of bits which represent the numbers
+;; value in base 2. E.g (number-to-bitlist 42) evaluates to (1 0 1 0 1 0)
+(defun number-to-bitlist (number)
+  (reverse
+   (loop repeat (integer-length number)
+      for i = number then (ash i -1)
+      collect (logand i 1))))
 
 ;; Creates a list of lists of the numbers 1 and 0. The inner lists
 ;; contain a binary representation of the numbers from 0 upto number:
@@ -87,21 +81,6 @@
    (loop for i from 0 upto number
       collect (number-to-bitlist i))))
 
-;; Transform a number into a list of bits which represent the numbers
-;; value in base 2. E.g (number-to-bitlist 42) evaluates to (1 0 1 0 1 0)
-(defun number-to-bitlist (number)
-  (reverse
-   (loop repeat (integer-length number)
-      for i = number then (ash i -1)
-      collect (logand i 1))))
-
-;; Graham's flatten: Takes a tree and flattens it into a list. E.g.:
-;; (flatten '(a (b (c d) e))) evaluates to (A B C D E)
-(defun flatten (structure)
-  (cond ((null structure) nil)
-        ((atom structure) (list structure))
-        (t (mapcan #'flatten structure))))
-
 ;; Walk tree of statements and replace all smybols according to
 ;; "symbols" list. If we pass '((a . 1) (b . 0) (c . 1) (and . and)
 ;; (or . or) (not . not))), a and c will  be replaced with 1, b with
@@ -110,3 +89,25 @@
   (loop for node in tree collect
        (cond ((listp node) (subst-symbols-by-list node symbols))
 	     (t (cdr (assoc node symbols))))))
+
+;; takes a number and returns a list of list of ts and fs, e.g.:
+;; ((t t t) (t t f) (t f t) ...). This list represents all possible
+;; combinations of truth values.
+(defun filled-truthlist-upto-number (number)
+  (subst-symbols-by-list 
+   (filled-bitlists-upto-number number)
+   '((1 . t) (0 . f))))
+
+;; Main function: Enter any logic statement with variables and any of
+;; the junctors and, or, not, implies as a valid lisp statement. For
+;; example: (find-solution '(or (and a (not b)) (and b c)))
+(defun find-solution (logic-statement)
+  (let* ((variables (get-variables-from-statement logic-statement))
+	 (combinations (filled-truthlist-upto-number (1- (expt 2 (length variables)))))
+	 (replacement-lists (associate-variables-with-combinations combinations variables)))
+    (loop for replacement in replacement-lists do
+	 (if (eql t (eval
+		     (subst-symbols-by-list logic-statement
+					    (append replacement logic-symbol-replacement))))
+	     (print-solution replacement)))))
+    
